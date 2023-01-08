@@ -28,13 +28,17 @@ def catt_cmd(cmd):
     subprocess.run(cmd)
 
 
+def get_audio_files(prayer):
+    return DEFAULT_ATHAN_URL if not prayer else PRAYER_AUDIO_FILES[prayer]
+
+
 def play_athan(prayer=None):
     cc_api = "catt"
     add_cmd = "add"
     volume = '40' if prayer == 'fajr' else '70'
-    audio_files = [DEFAULT_ATHAN_URL]
-    audio_files = PRAYER_AUDIO_FILES.get(prayer, PRAYER_AUDIO_FILES['other'])
-
+    audio_files = get_audio_files(prayer)
+    catt_cmd([cc_api, "stop"])
+    catt_cmd([cc_api, "clear"])
     catt_cmd([cc_api, "volume", volume])
     catt_cmd([cc_api, "cast", audio_files[0]])
     for audio_file in audio_files[1:]:
@@ -43,8 +47,8 @@ def play_athan(prayer=None):
     time.sleep(120)
 
 
-def is_athan_time(time, current_time):
-    return (current_time.hour == time.hour and current_time.minute + 1 == time.minute)
+def is_athan_time(prayer_time, current_time):
+    return (current_time.hour == prayer_time.hour and current_time.minute + 1 == prayer_time.minute)
 
 
 def get_athan_times(date):
@@ -60,6 +64,18 @@ def get_current_time():
     return datetime.datetime.now(LOCATION_TZ)
 
 
+def check_athan_time(prayer, prayer_time, current_time):
+    formatted_prayer_time = prayer_time.strftime('%I:%M %p')
+    formatted_current_time = current_time.strftime('%I:%M %p')
+    if is_athan_time(prayer_time, current_time):
+        print(
+            f'It is Athan time for {prayer.capitalize()} at {formatted_prayer_time}')
+        print(f'{prayer.capitalize()} time: {formatted_prayer_time}')
+        print(f'Current time: {formatted_current_time}')
+        print('--------------------------------------------------------------------')
+        play_athan(prayer) if prayer in {'fajr', 'maghrib'} else play_athan()
+
+
 def main():
     while True:
         current_date = datetime.date.today()
@@ -72,17 +88,11 @@ def main():
         maghrib_time = athan_times['maghrib']
         isha_time = athan_times['isha']
 
-        if is_athan_time(fajr_time, current_time):
-            play_athan("fajr")
-        elif is_athan_time(dhuhr_time, current_time):
-            play_athan()
-        elif is_athan_time(asr_time, current_time):
-            play_athan()
-        elif is_athan_time(maghrib_time, current_time):
-            play_athan("maghrib")
-        elif is_athan_time(isha_time, current_time):
-            play_athan()
-
+        check_athan_time("fajr", fajr_time, current_time)
+        check_athan_time("dhuhr", dhuhr_time, current_time)
+        check_athan_time("asr", asr_time, current_time)
+        check_athan_time("maghrib", maghrib_time, current_time)
+        check_athan_time("isha", isha_time, current_time)
         time.sleep(15)
 
 
